@@ -1,0 +1,74 @@
+name: Release (Windows)
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Setup Python envs (.venv/.venv_cuda)
+        run: |
+          npm run setup-python
+
+      - name: Sync versions from package.json
+        run: |
+          npm run update-version
+
+      - name: Build (CPU)
+        run: |
+          npm run build
+
+      - name: Package ZIP (CPU)
+        run: |
+          python utils/zip.py --zip_name VRCT.zip
+
+      - name: Read version from package.json
+        id: pkg
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: VRCT-windows-${{ steps.pkg.outputs.version }}
+          path: |
+            src-tauri/target/release/bundle/nsis/**/*
+            VRCT.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}
+          name: VRCT v${{ steps.pkg.outputs.version }}
+          files: |
+            src-tauri/target/release/bundle/nsis/**/*
+            VRCT.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
