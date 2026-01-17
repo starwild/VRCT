@@ -60,14 +60,24 @@ jobs:
           $VERSION_NUM = $TAG_WITH_V -replace "^v", ""
           echo "VERSION=$VERSION_NUM" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+      # - name: Create GitHub Release
+      #   id: create_release
+      #   uses: actions/create-release@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: ${{ github.ref }}
+      #     release_name: ${{ env.VERSION }}
+      #     draft: false
+      #     prerelease: false
+      
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2  # 使用 v2 版本
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ env.VERSION }}
+          tag_name: v${{ env.VERSION }}
+          name: Release ${{ env.VERSION }}
           draft: false
           prerelease: false
 
