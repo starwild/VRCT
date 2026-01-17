@@ -1,6 +1,12 @@
 name: Build develop
 
 on:
+  workflow_dispatch: # 必须添加这一行才能手动触发
+     :
+      reason:
+        description: '手动运行'
+        required: false
+        default: '测试'
   push:
     tags:
       - 'v*' # タグが 'v' で始まる場合にトリガー (例: v1.0.0)
