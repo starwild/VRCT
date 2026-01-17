@@ -45,6 +45,7 @@ jobs:
 
       - name: Package ZIP (CPU)
         run: |
+          pip install tqdm
           python utils/zip.py --zip_name VRCT.zip
 
       - name: Read version from package.json
