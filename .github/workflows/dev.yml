@@ -41,8 +41,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Setup Python environment
-        run: npm run setup-python
+      # - name: Setup Python environment
+      #   run: npm run setup-python
 
       - name: Install Python script dependencies
         run: pip install tqdm
@@ -85,10 +85,11 @@ jobs:
         if: github.ref_type == 'tag'
         with:
           files: |
+            README.md
             ./src-tauri/target/release/bundle/nsis/VRCT_${{ env.VERSION }}_x64-setup.exe
           # note you'll typically need to create a personal access token
           # with permissions to create releases in the other repo
-          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       # - name: Upload Release Asset (NSIS Installer)
       #   uses: actions/upload-release-asset@v1
       #   env:
