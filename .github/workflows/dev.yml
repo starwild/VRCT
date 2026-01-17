@@ -41,14 +41,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # - name: Setup Python environment
-      #   run: npm run setup-python
+      - name: Setup Python environment
+        run: npm run setup-python
 
       - name: Install Python script dependencies
         run: pip install tqdm
 
-      # - name: Build and package
-      #   run: npm run release-all
+      - name: Build and package
+        run: npm run release-all
 
       - name: Get version from tag
         id: get_version
