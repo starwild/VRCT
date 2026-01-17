@@ -54,7 +54,9 @@ jobs:
         id: get_version
         shell: pwsh
         run: |
-          $TAG_WITH_V = $env:GITHUB_REF -replace "^refs/tags/", ""
+          # 获取 Tag, 如果没有则默认为 'v0.0.1' (仅作占位)
+          $RAW_REF = if ($env:GITHUB_REF -match "refs/tags/") { $env:GITHUB_REF } else { "refs/tags/v0.0.0-default" }
+          $TAG_WITH_V = $RAW_REF -replace "^refs/tags/", ""
           $VERSION_NUM = $TAG_WITH_V -replace "^v", ""
           echo "VERSION=$VERSION_NUM" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
