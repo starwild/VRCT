@@ -1,75 +1,92 @@
-name: Release (develop)
+name: Release VRCT
 
 on:
-  workflow_dispatch: {}
   push:
     tags:
-      - 'v*'
+      - 'v*' # タグが 'v' で始まる場合にトリガー (例: v1.0.0)
 
 jobs:
-  build-release-windows:
+  release:
+    name: Build VRCT
     runs-on: windows-latest
-
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.15.0'
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
 
       - name: Install dependencies
-        run: |
-          npm ci
+        run: npm install
 
-      - name: Setup Python envs (.venv/.venv_cuda)
-        run: |
-          npm run setup-python
+      - name: Setup Python environment
+        run: npm run setup-python
 
-      - name: Sync versions from package.json
-        run: |
-          npm run update-version
+      - name: Install Python script dependencies
+        run: pip install tqdm
 
-      - name: Build (CPU)
-        run: |
-          npm run build
+      - name: Build and package
+        run: npm run release-all
 
-      - name: Package ZIP (CPU)
-        run: |
-          pip install tqdm
-          python utils/zip.py --zip_name VRCT.zip
-
-      - name: Read version from package.json
-        id: pkg
+      - name: Get version from tag
+        id: get_version
         shell: pwsh
         run: |
-          $version = (Get-Content package.json | ConvertFrom-Json).version
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+          $TAG_WITH_V = $env:GITHUB_REF -replace "^refs/tags/", ""
+          $VERSION_NUM = $TAG_WITH_V -replace "^v", ""
+          echo "VERSION=$VERSION_NUM" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: VRCT-windows-${{ steps.pkg.outputs.version }}
-          path: |
-            src-tauri/target/release/bundle/nsis/**/*
-            VRCT.zip
+      - name: Upload to Hugging Face Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: pwsh
+        run: |
+          pip install huggingface_hub==0.34.4
+
+          $UPLOAD_DIR = "./hf_upload_temp"
+          New-Item -ItemType Directory -Force -Path $UPLOAD_DIR
+          Copy-Item -Path ./VRCT.zip -Destination "$UPLOAD_DIR/VRCT.zip"
+          Copy-Item -Path ./VRCT_cuda.zip -Destination "$UPLOAD_DIR/VRCT_cuda.zip"
+
+          hf upload --repo-type model --commit-message "👍️[Update] ${{ env.VERSION }} Release" ms-software/VRCT $UPLOAD_DIR
+
+          hf repo tag create ms-software/VRCT ${{ github.ref_name }} --repo-type model --message "Release ${{ github.ref_name }}"
+
+          Remove-Item -Recurse -Force $UPLOAD_DIR
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.pkg.outputs.version }}
-          name: VRCT v${{ steps.pkg.outputs.version }}
-          files: |
-            src-tauri/target/release/bundle/nsis/**/*
-            VRCT.zip
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset (NSIS Installer)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./src-tauri/target/release/bundle/nsis/VRCT_${{ env.VERSION }}_x64-setup.exe
+          asset_name: VRCT_${{ env.VERSION }}_x64-setup.exe
+          asset_content_type: application/octet-stream
