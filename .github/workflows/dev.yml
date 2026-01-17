@@ -1,4 +1,4 @@
-name: Release VRCT Dev
+name: Build develop
 
 on:
   push:
@@ -51,24 +51,6 @@ jobs:
           $TAG_WITH_V = $env:GITHUB_REF -replace "^refs/tags/", ""
           $VERSION_NUM = $TAG_WITH_V -replace "^v", ""
           echo "VERSION=$VERSION_NUM" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Upload to Hugging Face Hub
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        shell: pwsh
-        run: |
-          pip install huggingface_hub==0.34.4
-
-          $UPLOAD_DIR = "./hf_upload_temp"
-          New-Item -ItemType Directory -Force -Path $UPLOAD_DIR
-          Copy-Item -Path ./VRCT.zip -Destination "$UPLOAD_DIR/VRCT.zip"
-          Copy-Item -Path ./VRCT_cuda.zip -Destination "$UPLOAD_DIR/VRCT_cuda.zip"
-
-          hf upload --repo-type model --commit-message "👍️[Update] ${{ env.VERSION }} Release" ms-software/VRCT $UPLOAD_DIR
-
-          hf repo tag create ms-software/VRCT ${{ github.ref_name }} --repo-type model --message "Release ${{ github.ref_name }}"
-
-          Remove-Item -Recurse -Force $UPLOAD_DIR
 
       - name: Create GitHub Release
         id: create_release
